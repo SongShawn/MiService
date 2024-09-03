@@ -1,21 +1,20 @@
-
 import json
 from .miioservice import MiIOService
 
 
 def twins_split(string, sep, default=None):
     pos = string.find(sep)
-    return (string, default) if pos == -1 else (string[0:pos], string[pos+1:])
+    return (string, default) if pos == -1 else (string[0:pos], string[pos + 1 :])
 
 
 def string_to_value(string):
-    if string[0] in '"\'#':
-        return string[1:-1] if string[-1] in '"\'#' else string[1:]
-    elif string == 'null':
+    if string[0] in "\"'#":
+        return string[1:-1] if string[-1] in "\"'#" else string[1:]
+    elif string == "null":
         return None
-    elif string == 'false':
+    elif string == "false":
         return False
-    elif string == 'true':
+    elif string == "true":
         return True
     elif string.isdigit():
         return int(string)
@@ -24,8 +23,9 @@ def string_to_value(string):
     except:
         return string
 
-def miio_command_help(did=None, prefix='?'):
-    quote = '' if prefix == '?' else "'"
+
+def miio_command_help(did=None, prefix="?"):
+    quote = "" if prefix == "?" else "'"
     return f'\
 Get Props: {prefix}<siid[-piid]>[,...]\n\
            {prefix}1,1-2,1-3,1-4,2-1,2-2,3\n\
@@ -50,41 +50,55 @@ MIoT Decode: {prefix}decode <ssecurity> <nonce> <data> [gzip]\n\
 '
 
 
-async def miio_command(service: MiIOService, did, text, prefix='?'):
-    cmd, arg = twins_split(text, ' ')
+async def miio_command(service: MiIOService, did, text, prefix="?"):
+    cmd, arg = twins_split(text, " ")
 
-    if cmd.startswith('/'):
+    if cmd.startswith("/"):
         return await service.miio_request(cmd, arg)
 
-    if cmd.startswith('prop') or cmd == 'action':
+    if cmd.startswith("prop") or cmd == "action":
         return await service.miot_request(cmd, json.loads(arg) if arg else None)
 
-    argv = arg.split(' ') if arg else []
+    argv = arg.split(" ") if arg else []
     argc = len(argv)
-    if cmd == 'list':
-        return await service.device_list(argc > 0 and argv[0], argc > 1 and string_to_value(argv[1]), argc > 2 and argv[2])
+    if cmd == "list":
+        return await service.device_list(
+            argc > 0 and argv[0],
+            argc > 1 and string_to_value(argv[1]),
+            argc > 2 and argv[2],
+        )
 
-    if cmd == 'spec':
+    if cmd == "spec":
         return await service.miot_spec(argc > 0 and argv[0], argc > 1 and argv[1])
 
-    if cmd == 'decode':
-        return MiIOService.miot_decode(argv[0], argv[1], argv[2], argc > 3 and argv[3] == 'gzip')
+    if cmd == "decode":
+        return MiIOService.miot_decode(
+            argv[0], argv[1], argv[2], argc > 3 and argv[3] == "gzip"
+        )
 
-    if not did or not cmd or cmd == '?' or cmd == '？' or cmd == 'help' or cmd == '-h' or cmd == '--help':
+    if (
+        not did
+        or not cmd
+        or cmd == "?"
+        or cmd == "？"
+        or cmd == "help"
+        or cmd == "-h"
+        or cmd == "--help"
+    ):
         return miio_command_help(did, prefix)
 
     if not did.isdigit():
         devices = await service.device_list(did)
         if not devices:
             return "Device not found: " + did
-        did = devices[0]['did']
+        did = devices[0]["did"]
 
     props = []
     setp = True
     miot = True
-    for item in cmd.split(','):
-        key, value = twins_split(item, '=')
-        siid, iid = twins_split(key, '-', '1')
+    for item in cmd.split(","):
+        key, value = twins_split(item, "=")
+        siid, iid = twins_split(key, "-", "1")
         if siid.isdigit() and iid.isdigit():
             prop = [int(siid), int(iid)]
         else:
@@ -97,8 +111,11 @@ async def miio_command(service: MiIOService, did, text, prefix='?'):
         props.append(prop)
 
     if miot and argc > 0:
-        args = [] if arg == '[]' else [string_to_value(a) for a in argv]
+        args = [] if arg == "[]" else [string_to_value(a) for a in argv]
         return await service.miot_action(did, props[0], args)
 
-    do_props = ((service.home_get_props, service.miot_get_props), (service.home_set_props, service.miot_set_props))[setp][miot]
+    do_props = (
+        (service.home_get_props, service.miot_get_props),
+        (service.home_set_props, service.miot_set_props),
+    )[setp][miot]
     return await do_props(did, props if miot or setp else [p[0] for p in props])

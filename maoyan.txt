@@ -1,0 +1,17 @@
+通过 python micli.py list获取设备列表
+{
+    "name": "小米智能猫眼1S",
+    "model": "loock.cateye.v06",
+    "did": "xx",
+    "token": "xx"
+},
+
+将model字段拼接为如下url，获取接口规范
+https://home.miot-spec.com/spec/loock.cateye.v06
+
+micli.py使用
+设置MI_USER MI_PASS MI_DID后，使用命令
+1. 查看猫眼的状态
+    python micli.py 2-2
+2. 查看剩余电量
+    python micli.py 6-1
